@@ -1,0 +1,12 @@
+[Unit]
+Description=Run the netmon full diagnostic suite periodically
+
+[Timer]
+# First run shortly after boot, then every 5 minutes.
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=10s
+Unit=netmon.service
+
+[Install]
+WantedBy=timers.target

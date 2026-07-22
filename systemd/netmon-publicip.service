@@ -1,0 +1,13 @@
+[Unit]
+Description=netmon public egress IP watcher (flapping / multi-egress detection)
+Documentation=file://__NETMON_DIR__/README.md
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=__NETMON_DIR__
+ExecStart=/usr/bin/env bash __NETMON_DIR__/tests/publicip.sh
+User=root
+Nice=15
+# Environment=NM_OUTPUT_DIR=/var/lib/netmon

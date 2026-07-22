@@ -1,0 +1,15 @@
+[Unit]
+Description=netmon full diagnostic run
+Documentation=file://__NETMON_DIR__/README.md
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=__NETMON_DIR__
+ExecStart=/usr/bin/env bash __NETMON_DIR__/netmon.sh
+# Run as root so DF-bit MTU probes, mtr and tracepath have full capability.
+User=root
+Nice=10
+# Optional: send output somewhere other than the checkout's output/ dir.
+# Environment=NM_OUTPUT_DIR=/var/lib/netmon

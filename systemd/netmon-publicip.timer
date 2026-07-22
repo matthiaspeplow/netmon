@@ -1,0 +1,12 @@
+[Unit]
+Description=Sample the public egress IP frequently to catch brief flaps
+
+[Timer]
+# Egress IP changes can be short-lived; sample once a minute.
+OnBootSec=1min
+OnUnitActiveSec=60s
+AccuracySec=5s
+Unit=netmon-publicip.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,10 @@
+# Runtime data (raw run logs + rolling metrics CSVs + state)
+/output/
+
+# Local operator overrides (copy of config with real targets/secrets)
+config/netmon.local.conf
+
+# Editor / OS noise
+*.swp
+*~
+.DS_Store
