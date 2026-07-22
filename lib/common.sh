@@ -95,7 +95,12 @@ nm_apply_config_defaults() {
   : "${CAPTIVE_CHECK_URL:=http://connectivitycheck.gstatic.com/generate_204}"
   nm_default_array HTTP_TARGETS "https://www.cloudflare.com"
 
-  : "${THROUGHPUT_ENABLED:=0}"; : "${THROUGHPUT_USE_SPEEDTEST:=1}"
+  : "${THROUGHPUT_ENABLED:=0}"
+  : "${THROUGHPUT_USE_CURL:=1}"
+  : "${CURL_SPEEDTEST_DOWN_URL:=https://speed.cloudflare.com/__down?bytes=}"
+  : "${CURL_SPEEDTEST_UP_URL:=https://speed.cloudflare.com/__up}"
+  : "${CURL_SPEEDTEST_BYTES:=25000000}"; : "${CURL_SPEEDTEST_MAXTIME:=30}"
+  : "${THROUGHPUT_USE_SPEEDTEST:=0}"
   : "${IPERF_SERVER:=}"; : "${IPERF_PORT:=5201}"
 
   : "${NTP_ENABLED:=1}"; : "${NTP_REFERENCE:=pool.ntp.org}"

@@ -23,6 +23,31 @@ record() {
   nm_log "throughput ${method} down=${down:-NA} up=${up:-NA} Mbps lat=${lat:-NA}ms"
 }
 
+bps_to_mbps() { awk -v b="${1:-0}" 'BEGIN{printf "%.1f", b*8/1000000}'; }
+
+# --- curl-based HTTP speed test (no extra dependencies) ----------------------
+# Downloads N bytes and (optionally) uploads N bytes, using curl's own
+# speed_download/speed_upload accounting (bytes/sec) converted to Mbit/s.
+if [ "${THROUGHPUT_USE_CURL:-1}" = "1" ] && nm_have curl; then
+  dl_url="${CURL_SPEEDTEST_DOWN_URL}${CURL_SPEEDTEST_BYTES}"
+  read -r sd ttfb <<<"$(curl -fsS -o /dev/null --max-time "${CURL_SPEEDTEST_MAXTIME:-30}" \
+    -w '%{speed_download} %{time_starttransfer}' "$dl_url" 2>>"$raw")"
+  down_m="$(bps_to_mbps "${sd:-0}")"
+  lat_ms="$(awk -v s="${ttfb:-0}" 'BEGIN{printf "%.0f", s*1000}')"
+
+  up_m=""
+  if [ -n "${CURL_SPEEDTEST_UP_URL:-}" ]; then
+    su="$(head -c "${CURL_SPEEDTEST_BYTES}" /dev/zero \
+      | curl -fsS -o /dev/null --max-time "${CURL_SPEEDTEST_MAXTIME:-30}" \
+        -w '%{speed_upload}' -X POST --data-binary @- "$CURL_SPEEDTEST_UP_URL" 2>>"$raw")"
+    up_m="$(bps_to_mbps "${su:-0}")"
+  fi
+
+  printf 'curl speedtest url=%s bytes=%s down_Bps=%s up_Bps=%s ttfb_s=%s\n' \
+    "$dl_url" "${CURL_SPEEDTEST_BYTES}" "${sd:-}" "${su:-}" "${ttfb:-}" >>"$raw"
+  record "curl" "$(nm_url_host "$dl_url")" "$down_m" "$up_m" "$lat_ms"
+fi
+
 # --- Internet speed test (speedtest-cli --simple, no jq needed) ---------------
 if [ "${THROUGHPUT_USE_SPEEDTEST:-1}" = "1" ] && nm_have speedtest-cli; then
   out="$(speedtest-cli --simple 2>&1)"

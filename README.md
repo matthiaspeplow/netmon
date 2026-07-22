@@ -93,11 +93,15 @@ Summarize what's been collected:
 | `dns` | Resolution **latency**, answers, failures, and answer **changes**, per resolver | `dig` |
 | `http` | Per web-app timing (DNS/connect/**TLS**/TTFB/total), HTTP status, redirects, **cert days-to-expiry**; plus a **captive-portal** check | `curl`, `openssl` |
 | `ntp` | **Clock offset** vs a reference server | `ntpdate`/`sntp`/`chronyc` |
-| `throughput` | Down/up bandwidth (internet and/or internal) — **disabled by default** | `speedtest-cli`, `iperf3` |
+| `throughput` | Down/up bandwidth via a **curl** HTTP speed test (default, no extra deps), or `speedtest-cli` / internal `iperf3` — **disabled by default** | `curl`; opt. `speedtest-cli`, `iperf3` |
 
 `throughput` is off by default because running a speed test every few minutes
-saturates the link and skews the latency/loss you're measuring. Enable it
-(`THROUGHPUT_ENABLED=1`) only for occasional or slower-cadence runs.
+saturates the link and skews the latency/loss you're measuring. The default
+method is a dependency-free **curl** download/upload against Cloudflare's open
+speed endpoints (`speed.cloudflare.com`); `speedtest-cli` and `iperf3` are
+optional. Enable it (`THROUGHPUT_ENABLED=1`) only for occasional or
+slower-cadence runs. Tune `CURL_SPEEDTEST_BYTES` to trade accuracy for data
+used, or set `CURL_SPEEDTEST_UP_URL=""` to skip the upload leg.
 
 ## Output layout
 
