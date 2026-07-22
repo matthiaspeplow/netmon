@@ -166,5 +166,24 @@ else
   echo "    (no data)"
 fi
 
+# --- 8. Throughput -----------------------------------------------------------
+echo
+echo "[8] THROUGHPUT  (down/up Mbps per method; disabled by default)"
+if have_csv throughput; then
+  f="$M/throughput.csv"
+  awk -F, -v ts="$(col_index "$f" timestamp)" -v me="$(col_index "$f" method)" \
+         -v dm="$(col_index "$f" download_mbps)" -v um="$(col_index "$f" upload_mbps)" \
+         -v la="$(col_index "$f" latency_ms)" -v cut="$cutoff" '
+    NR==1{next}
+    { t=$ts; gsub(/"/,"",t); if(cut!="" && t<cut) next;
+      m=$me; gsub(/"/,"",m); c[m]++;
+      d=$dm+0; sd[m]+=d; lastd[m]=$dm; if(mind[m]==""||d<mind[m]) mind[m]=d;
+      if($um!=""){su[m]+=$um; nu[m]++} if($la!=""){sl[m]+=$la; nl[m]++} }
+    END{ for(k in c) printf "    %-10s down_avg=%.1f  down_min=%.1f  down_last=%s  up_avg=%.1f  lat_avg=%.0fms  (n=%d)\n",
+           k, sd[k]/c[k], mind[k]+0, lastd[k], (nu[k]?su[k]/nu[k]:0), (nl[k]?sl[k]/nl[k]:0), c[k] }' "$f" | sort
+else
+  echo "    (no data -- throughput is off by default; set THROUGHPUT_ENABLED=1)"
+fi
+
 echo
 echo "Tip: raw per-run detail is under $NM_RUNS_DIR/<timestamp>/"
