@@ -30,7 +30,8 @@ bps_to_mbps() { awk -v b="${1:-0}" 'BEGIN{printf "%.1f", b*8/1000000}'; }
 # speed_download/speed_upload accounting (bytes/sec) converted to Mbit/s.
 if [ "${THROUGHPUT_USE_CURL:-1}" = "1" ] && nm_have curl; then
   dl_url="${CURL_SPEEDTEST_DOWN_URL}${CURL_SPEEDTEST_BYTES}"
-  read -r sd ttfb <<<"$(curl -fsS -o /dev/null --max-time "${CURL_SPEEDTEST_MAXTIME:-30}" \
+  read -ra TP_BIND <<<"$(nm_bind_curl)"
+  read -r sd ttfb <<<"$(curl -fsS -o /dev/null --max-time "${CURL_SPEEDTEST_MAXTIME:-30}" "${TP_BIND[@]}" \
     -w '%{speed_download} %{time_starttransfer}' "$dl_url" 2>>"$raw")"
   down_m="$(bps_to_mbps "${sd:-0}")"
   lat_ms="$(awk -v s="${ttfb:-0}" 'BEGIN{printf "%.0f", s*1000}')"
@@ -38,7 +39,7 @@ if [ "${THROUGHPUT_USE_CURL:-1}" = "1" ] && nm_have curl; then
   up_m=""
   if [ -n "${CURL_SPEEDTEST_UP_URL:-}" ]; then
     su="$(head -c "${CURL_SPEEDTEST_BYTES}" /dev/zero \
-      | curl -fsS -o /dev/null --max-time "${CURL_SPEEDTEST_MAXTIME:-30}" \
+      | curl -fsS -o /dev/null --max-time "${CURL_SPEEDTEST_MAXTIME:-30}" "${TP_BIND[@]}" \
         -w '%{speed_upload}' -X POST --data-binary @- "$CURL_SPEEDTEST_UP_URL" 2>>"$raw")"
     up_m="$(bps_to_mbps "${su:-0}")"
   fi
@@ -50,7 +51,8 @@ fi
 
 # --- Internet speed test (speedtest-cli --simple, no jq needed) ---------------
 if [ "${THROUGHPUT_USE_SPEEDTEST:-1}" = "1" ] && nm_have speedtest-cli; then
-  out="$(speedtest-cli --simple 2>&1)"
+  sp_src=(); [ -n "${NM_SRC_IP:-}" ] && sp_src=(--source "$NM_SRC_IP")
+  out="$(speedtest-cli --simple "${sp_src[@]}" 2>&1)"
   printf 'speedtest-cli --simple\n%s\n\n' "$out" >>"$raw"
   lat="$(awk '/Ping/{print $2}' <<<"$out")"
   down="$(awk '/Download/{print $2}' <<<"$out")"
@@ -64,9 +66,10 @@ fi
 if [ -n "${IPERF_SERVER:-}" ]; then
   if nm_have iperf3; then
     up_bps=""; down_bps=""
-    up_out="$(iperf3 -c "$IPERF_SERVER" -p "${IPERF_PORT:-5201}" --connect-timeout 5000 2>&1)"
+    ip_bind=(); [ -n "${NM_SRC_IP:-}" ] && ip_bind=(-B "$NM_SRC_IP")
+    up_out="$(iperf3 -c "$IPERF_SERVER" -p "${IPERF_PORT:-5201}" "${ip_bind[@]}" --connect-timeout 5000 2>&1)"
     printf 'iperf3 upload\n%s\n\n' "$up_out" >>"$raw"
-    down_out="$(iperf3 -c "$IPERF_SERVER" -p "${IPERF_PORT:-5201}" -R --connect-timeout 5000 2>&1)"
+    down_out="$(iperf3 -c "$IPERF_SERVER" -p "${IPERF_PORT:-5201}" "${ip_bind[@]}" -R --connect-timeout 5000 2>&1)"
     printf 'iperf3 download\n%s\n\n' "$down_out" >>"$raw"
     # Parse the "sender/receiver" summary lines: "... X Mbits/sec ... sender".
     up_bps="$(awk '/sender/{for(i=1;i<=NF;i++) if($i ~ /bits\/sec/) print $(i-1) " " $i}' <<<"$up_out" | tail -n1)"

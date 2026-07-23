@@ -48,6 +48,11 @@ Fill in the placeholders, especially:
 - Internal `PING_TARGETS` / `TRACE_TARGETS` (gateway is auto-added) and, if you
   have one, an `IPERF_SERVER`.
 - `IPV6_ENABLED=0` if the site is IPv4-only.
+- `SOURCE_INTERFACE` / `SOURCE_IP` (optional) — bind every probe to a specific
+  egress path (multi-homed box, or one config per uplink/VLAN). `SOURCE_INTERFACE`
+  covers `ping`/`mtu`/`traceroute`/`curl` (publicip, http, throughput); `dig`,
+  `iperf3` and `speedtest-cli` can only bind a source **IP**, so set `SOURCE_IP`
+  too if you need those bound. Leave both empty to use the OS default route.
 
 ## Usage
 
@@ -81,6 +86,21 @@ Summarize what's been collected:
 ./analyze.sh --minutes 240  # last 4 hours
 ./analyze.sh --all          # everything on record
 ```
+
+Ad-hoc single-host MTU check (drill into a suspected black hole found by the
+`mtu` test):
+
+```bash
+./mtu-sweep.sh ao.s-f.com            # find exact path MTU + verdict
+./mtu-sweep.sh -v --min 1300 host    # show each probe step
+./mtu-sweep.sh -6 host               # probe over IPv6
+./mtu-sweep.sh -I eth1 host           # test via a specific source interface
+./mtu-sweep.sh -S 10.20.30.40 host    # test via a specific source IP
+```
+
+It reports the exact path MTU, the implied TCP MSS, and whether a reduced MTU is
+normal PMTUD signaling or a **black hole** (large packets dropped with no ICMP),
+with the matching mitigation.
 
 ## Tests
 

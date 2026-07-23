@@ -29,6 +29,9 @@ raw="${NM_RUN_DIR:+$NM_RUN_DIR/publicip.txt}"
 [ "${PUBLICIP_ENABLED:-1}" = "1" ] || { nm_log "publicip: disabled"; exit 0; }
 nm_require curl curl || exit 0
 
+read -ra PIP_BIND <<<"$(nm_bind_curl)"
+nm_have_src_bind && nm_log "publicip: bound to ${NM_SRC_IFACE:-$NM_SRC_IP}"
+
 is_ipv4() { printf '%s' "$1" | grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$'; }
 is_ipv6() { printf '%s' "$1" | grep -Eq '^[0-9A-Fa-f:]+:[0-9A-Fa-f:]*$'; }
 
@@ -37,7 +40,7 @@ declare -a v4seen
 ok=0; total=0
 for svc in "${PUBLICIP_SERVICES[@]}"; do
   total=$((total+1))
-  resp="$(curl -4 -fsS --max-time "${PUBLICIP_TIMEOUT:-5}" "$svc" 2>/dev/null | tr -d '[:space:]')"
+  resp="$(curl -4 -fsS --max-time "${PUBLICIP_TIMEOUT:-5}" "${PIP_BIND[@]}" "$svc" 2>/dev/null | tr -d '[:space:]')"
   printf '%s -> %s\n' "$svc" "$resp" >>"$raw"
   if is_ipv4 "$resp"; then
     ok=$((ok+1))
@@ -55,7 +58,7 @@ disagreement=0; [ "${distinct_count:-0}" -gt 1 ] && disagreement=1
 ipv6=""
 if [ "${IPV6_ENABLED:-0}" = "1" ]; then
   for svc in "${PUBLICIP_SERVICES[@]}"; do
-    resp="$(curl -6 -fsS --max-time "${PUBLICIP_TIMEOUT:-5}" "$svc" 2>/dev/null | tr -d '[:space:]')"
+    resp="$(curl -6 -fsS --max-time "${PUBLICIP_TIMEOUT:-5}" "${PIP_BIND[@]}" "$svc" 2>/dev/null | tr -d '[:space:]')"
     if is_ipv6 "$resp"; then ipv6="$resp"; printf '%s -> %s (v6)\n' "$svc" "$resp" >>"$raw"; break; fi
   done
 fi
@@ -73,7 +76,7 @@ fi
 # Optional ASN/org enrichment (needs jq + a JSON endpoint).
 asn=""; org=""
 if [ -n "${PUBLICIP_ASN_URL:-}" ] && nm_have jq; then
-  j="$(curl -fsS --max-time "${PUBLICIP_TIMEOUT:-5}" "$PUBLICIP_ASN_URL" 2>/dev/null)"
+  j="$(curl -fsS --max-time "${PUBLICIP_TIMEOUT:-5}" "${PIP_BIND[@]}" "$PUBLICIP_ASN_URL" 2>/dev/null)"
   if [ -n "$j" ]; then
     asn="$(printf '%s' "$j" | jq -r '.asn // empty' 2>/dev/null)"
     org="$(printf '%s' "$j" | jq -r '.asn_org // .org // empty' 2>/dev/null)"

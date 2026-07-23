@@ -26,14 +26,17 @@ fi
 
 header="$(nm_ctx_header),target,is_gateway,tx,rx,loss_pct,rtt_min_ms,rtt_avg_ms,rtt_max_ms,rtt_mdev_ms"
 
+read -ra PING_BIND <<<"$(nm_bind_ping)"
+nm_have_src_bind && nm_log "ping: bound to ${NM_SRC_IFACE:-$NM_SRC_IP}"
+
 ping_once() {
   local target="$1" is_gw="$2"
   local raw out
   raw="$NM_RUN_DIR/ping_$(nm_slug "$target").txt"
   if nm_is_macos; then
-    out="$(ping -n -c "$PING_COUNT" -i "$PING_INTERVAL" -t "$PING_DEADLINE" "$target" 2>&1)"
+    out="$(ping -n -c "$PING_COUNT" -i "$PING_INTERVAL" -t "$PING_DEADLINE" "${PING_BIND[@]}" "$target" 2>&1)"
   else
-    out="$(ping -n -c "$PING_COUNT" -i "$PING_INTERVAL" -w "$PING_DEADLINE" "$target" 2>&1)"
+    out="$(ping -n -c "$PING_COUNT" -i "$PING_INTERVAL" -w "$PING_DEADLINE" "${PING_BIND[@]}" "$target" 2>&1)"
   fi
   printf '%s\n' "$out" >"$raw"
 

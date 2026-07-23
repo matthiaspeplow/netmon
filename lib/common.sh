@@ -70,6 +70,8 @@ nm_apply_config_defaults() {
   : "${SEGMENT:=unknown}"
   : "${SITE:=}"
   : "${IPV6_ENABLED:=0}"
+  : "${SOURCE_INTERFACE:=}"
+  : "${SOURCE_IP:=}"
 
   : "${PING_ENABLED:=1}"; : "${PING_COUNT:=20}"; : "${PING_INTERVAL:=0.2}"
   : "${PING_DEADLINE:=15}"; : "${PING_INCLUDE_GATEWAY:=1}"
@@ -104,6 +106,11 @@ nm_apply_config_defaults() {
   : "${IPERF_SERVER:=}"; : "${IPERF_PORT:=5201}"
 
   : "${NTP_ENABLED:=1}"; : "${NTP_REFERENCE:=pool.ntp.org}"
+
+  # Resolved source-binding values used by the nm_bind_* helpers below.
+  NM_SRC_IFACE="${SOURCE_INTERFACE:-}"
+  NM_SRC_IP="${SOURCE_IP:-}"
+  export NM_SRC_IFACE NM_SRC_IP
 }
 
 # nm_default_array NAME val1 val2 ...: define NAME as an array only if it is not
@@ -155,6 +162,39 @@ nm_wifi_ssid() {
   elif nm_have nmcli; then
     nmcli -t -f active,ssid dev wifi 2>/dev/null | awk -F: '/^yes/{print $2; exit}'
   fi
+}
+
+# --- Source-interface / source-IP binding ------------------------------------
+# Each tool takes different flags to bind egress to a specific interface or
+# source address. These helpers print the right flags for NM_SRC_IFACE /
+# NM_SRC_IP (either or both may be empty). Capture into an array, e.g.:
+#   read -ra bind <<<"$(nm_bind_ping)"; ping "${bind[@]}" host
+# An empty result yields an empty array, so unbound calls are unaffected.
+nm_have_src_bind() { [ -n "${NM_SRC_IFACE:-}" ] || [ -n "${NM_SRC_IP:-}" ]; }
+
+nm_bind_ping() {   # iputils: -I iface|addr ; macOS: -b iface / -S addr
+  if nm_is_macos; then
+    [ -n "${NM_SRC_IFACE:-}" ] && printf ' -b %s' "$NM_SRC_IFACE"
+    [ -n "${NM_SRC_IP:-}" ]    && printf ' -S %s' "$NM_SRC_IP"
+  else
+    if   [ -n "${NM_SRC_IFACE:-}" ]; then printf ' -I %s' "$NM_SRC_IFACE"
+    elif [ -n "${NM_SRC_IP:-}" ];    then printf ' -I %s' "$NM_SRC_IP"; fi
+  fi
+}
+nm_bind_traceroute() {   # traceroute: -i iface , -s src_addr
+  [ -n "${NM_SRC_IFACE:-}" ] && printf ' -i %s' "$NM_SRC_IFACE"
+  [ -n "${NM_SRC_IP:-}" ]    && printf ' -s %s' "$NM_SRC_IP"
+}
+nm_bind_mtr() {          # mtr: -I iface , -a address
+  [ -n "${NM_SRC_IFACE:-}" ] && printf ' -I %s' "$NM_SRC_IFACE"
+  [ -n "${NM_SRC_IP:-}" ]    && printf ' -a %s' "$NM_SRC_IP"
+}
+nm_bind_curl() {         # curl: --interface accepts an iface name OR address
+  if   [ -n "${NM_SRC_IFACE:-}" ]; then printf ' --interface %s' "$NM_SRC_IFACE"
+  elif [ -n "${NM_SRC_IP:-}" ];    then printf ' --interface %s' "$NM_SRC_IP"; fi
+}
+nm_bind_dig() {          # dig can bind a source ADDRESS only (-b), not an iface
+  [ -n "${NM_SRC_IP:-}" ] && printf ' -b %s' "$NM_SRC_IP"
 }
 
 # --- Filename slug ------------------------------------------------------------

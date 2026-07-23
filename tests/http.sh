@@ -12,6 +12,9 @@ nm_init_run
 [ "${HTTP_ENABLED:-1}" = "1" ] || { nm_log "http: disabled"; exit 0; }
 nm_require curl curl || exit 0
 
+read -ra HTTP_BIND <<<"$(nm_bind_curl)"
+nm_have_src_bind && nm_log "http: bound to ${NM_SRC_IFACE:-$NM_SRC_IP} (TLS cert check via openssl is not source-bound)"
+
 raw="$NM_RUN_DIR/http.txt"
 : >"$raw"
 
@@ -36,7 +39,7 @@ header="$(nm_ctx_header),url,http_code,dns_ms,connect_ms,tls_ms,ttfb_ms,total_ms
 
 http_one() {
   local url="$1" line code dns conn appconn ttfb total redir sslv rip
-  line="$(curl -sS -o /dev/null --max-time "${HTTP_TIMEOUT:-15}" -w "$CURL_FMT" "$url" 2>>"$raw")"
+  line="$(curl -sS -o /dev/null --max-time "${HTTP_TIMEOUT:-15}" "${HTTP_BIND[@]}" -w "$CURL_FMT" "$url" 2>>"$raw")"
   printf '%s => %s\n' "$url" "$line" >>"$raw"
   read -r code dns conn appconn ttfb total redir sslv rip <<<"$line"
 
@@ -62,7 +65,7 @@ done
 
 # --- Captive portal / connectivity probe -------------------------------------
 if [ -n "${CAPTIVE_CHECK_URL:-}" ]; then
-  cline="$(curl -sS -o /dev/null --max-time "${HTTP_TIMEOUT:-15}" \
+  cline="$(curl -sS -o /dev/null --max-time "${HTTP_TIMEOUT:-15}" "${HTTP_BIND[@]}" \
     -w '%{http_code} %{num_redirects} %{url_effective}' "$CAPTIVE_CHECK_URL" 2>>"$raw")"
   ccode="$(awk '{print $1}' <<<"$cline")"
   credir="$(awk '{print $2}' <<<"$cline")"

@@ -46,7 +46,7 @@ if [ "$install_deps" -eq 1 ]; then
 fi
 
 nm_log "making scripts executable ..."
-chmod +x "$_nm_dir/netmon.sh" "$_nm_dir/analyze.sh" "$_nm_dir/install.sh" \
+chmod +x "$_nm_dir/netmon.sh" "$_nm_dir/analyze.sh" "$_nm_dir/mtu-sweep.sh" "$_nm_dir/install.sh" \
          "$_nm_dir"/tests/*.sh 2>/dev/null || true
 
 if [ "$do_systemd" -eq 1 ]; then

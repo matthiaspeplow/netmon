@@ -15,20 +15,23 @@ nm_require ping iputils-ping || exit 0
 MTU_MIN="${MTU_MIN:-1200}"
 MTU_MAX="${MTU_MAX:-1500}"
 
+read -ra MTU_BIND <<<"$(nm_bind_ping)"
+nm_have_src_bind && nm_log "mtu: bound to ${NM_SRC_IFACE:-$NM_SRC_IP}"
+
 # DF ping at a given total MTU size (payload = size - 28 bytes IP+ICMP header).
 # Prints raw output; returns ping's exit status.
 df_ping_out() {
   local target="$1" payload=$(( $2 - 28 ))
   if nm_is_macos; then
-    ping -n -c1 -t2 -D -s "$payload" "$target" 2>&1
+    ping -n -c1 -t2 -D -s "$payload" "${MTU_BIND[@]}" "$target" 2>&1
   else
-    ping -n -c1 -W2 -M "do" -s "$payload" "$target" 2>&1
+    ping -n -c1 -W2 -M "do" -s "$payload" "${MTU_BIND[@]}" "$target" 2>&1
   fi
 }
 df_ok() { df_ping_out "$1" "$2" >/dev/null 2>&1; }
 plain_ok() {
-  if nm_is_macos; then ping -n -c1 -t2 "$1" >/dev/null 2>&1
-  else ping -n -c1 -W2 "$1" >/dev/null 2>&1; fi
+  if nm_is_macos; then ping -n -c1 -t2 "${MTU_BIND[@]}" "$1" >/dev/null 2>&1
+  else ping -n -c1 -W2 "${MTU_BIND[@]}" "$1" >/dev/null 2>&1; fi
 }
 
 header="$(nm_ctx_header),target,reachable,path_mtu,pmtud_signaled,blackhole_suspected,note"

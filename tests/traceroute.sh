@@ -20,6 +20,10 @@ fi
 
 header="$(nm_ctx_header),target,tool,hop_count,dest_reached,path_changed,path_signature"
 
+read -ra MTR_BIND <<<"$(nm_bind_mtr)"
+read -ra TR_BIND  <<<"$(nm_bind_traceroute)"
+nm_have_src_bind && nm_log "traceroute: bound to ${NM_SRC_IFACE:-$NM_SRC_IP}"
+
 trace_one() {
   local target="$1"
   local slug raw sigfile out hops sig prev changed reached
@@ -28,10 +32,10 @@ trace_one() {
   sigfile="$NM_STATE_DIR/trace_${slug}.path"
 
   if [ "$tool" = "mtr" ]; then
-    out="$(mtr -n --report --report-cycles="${TRACE_CYCLES:-3}" -m "${TRACE_MAX_HOPS:-30}" "$target" 2>&1)"
+    out="$(mtr -n "${MTR_BIND[@]}" --report --report-cycles="${TRACE_CYCLES:-3}" -m "${TRACE_MAX_HOPS:-30}" "$target" 2>&1)"
     hops="$(printf '%s\n' "$out" | awk '/\|--/{print $2}')"
   else
-    out="$(traceroute -n -m "${TRACE_MAX_HOPS:-30}" "$target" 2>&1)"
+    out="$(traceroute -n "${TR_BIND[@]}" -m "${TRACE_MAX_HOPS:-30}" "$target" 2>&1)"
     # Hop lines begin with the hop number; column 2 is the first IP (or '*').
     hops="$(printf '%s\n' "$out" | awk '/^[ ]*[0-9]+/{print $2}')"
   fi

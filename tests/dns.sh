@@ -15,6 +15,9 @@ nm_have dig && have_dig=1
 if [ "$have_dig" -eq 0 ]; then
   nm_warn "dns: dig not found (apt install bind9-dnsutils); falling back to getent (system resolver only, no timing)"
 fi
+if nm_have_src_bind && [ -z "${NM_SRC_IP:-}" ]; then
+  nm_warn "dns: dig binds a source IP only; SOURCE_INTERFACE alone will not steer dig queries (set SOURCE_IP)"
+fi
 
 header="$(nm_ctx_header),resolver,name,status,query_time_ms,answers,changed"
 raw="$NM_RUN_DIR/dns.txt"
@@ -22,9 +25,10 @@ raw="$NM_RUN_DIR/dns.txt"
 
 resolve_dig() {
   # $1=resolver ("system" or IP), $2=name. Echoes: status<TAB>qtime_ms<TAB>answers
-  local resolver="$1" name="$2" full status qtime answers server=()
+  local resolver="$1" name="$2" full status qtime answers server=() bind=()
   [ "$resolver" != "system" ] && server=("@$resolver")
-  full="$(dig +tries=1 +time="${DNS_TIMEOUT:-2}" "${server[@]}" "$name" A 2>&1)"
+  read -ra bind <<<"$(nm_bind_dig)"
+  full="$(dig +tries=1 +time="${DNS_TIMEOUT:-2}" "${bind[@]}" "${server[@]}" "$name" A 2>&1)"
   printf '\n### %s @ %s\n%s\n' "$name" "$resolver" "$full" >>"$raw"
   status="$(printf '%s\n' "$full" | sed -n 's/.*status: \([A-Z]*\).*/\1/p' | head -n1)"
   qtime="$(printf '%s\n' "$full" | sed -n 's/.*Query time: \([0-9]*\) msec.*/\1/p' | head -n1)"
