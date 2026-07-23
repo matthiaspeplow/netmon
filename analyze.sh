@@ -100,9 +100,26 @@ else
   echo "    (no data)"
 fi
 
-# --- 4. DNS ------------------------------------------------------------------
+# --- 4. Traceroute -----------------------------------------------------------
 echo
-echo "[4] DNS  (failures / answer changes / avg query time)"
+echo "[4] TRACEROUTE  (path changes / dest reachability / hop count)"
+if have_csv traceroute; then
+  f="$M/traceroute.csv"
+  awk -F, -v ts="$(col_index "$f" timestamp)" -v tg="$(col_index "$f" target)" \
+         -v pc="$(col_index "$f" path_changed)" -v dr="$(col_index "$f" dest_reached)" \
+         -v hc="$(col_index "$f" hop_count)" -v cut="$cutoff" '
+    NR==1{next}
+    { t=$ts; gsub(/"/,"",t); if(cut!="" && t<cut) next;
+      g=$tg; gsub(/"/,"",g); c[g]++; if($pc==1) ch[g]++; if($dr==1) reach[g]++; lasth[g]=$hc }
+    END{ for(k in c) printf "    %-22s path_changes=%d  reached=%d/%d  hops_last=%s\n",
+           k, ch[k]+0, reach[k]+0, c[k], lasth[k] }' "$f" | sort
+else
+  echo "    (no data)"
+fi
+
+# --- 5. DNS ------------------------------------------------------------------
+echo
+echo "[5] DNS  (failures / answer changes / avg query time)"
 if have_csv dns; then
   f="$M/dns.csv"
   awk -F, -v ts="$(col_index "$f" timestamp)" -v st="$(col_index "$f" status)" \
@@ -118,9 +135,9 @@ else
   echo "    (no data)"
 fi
 
-# --- 5. HTTP / TLS -----------------------------------------------------------
+# --- 6. HTTP / TLS -----------------------------------------------------------
 echo
-echo "[5] HTTP  (non-2xx/3xx / worst TTFB / soonest cert expiry)"
+echo "[6] HTTP  (non-2xx/3xx / worst TTFB / soonest cert expiry)"
 if have_csv http; then
   f="$M/http.csv"
   awk -F, -v ts="$(col_index "$f" timestamp)" -v cd="$(col_index "$f" http_code)" \
@@ -137,9 +154,9 @@ else
   echo "    (no data)"
 fi
 
-# --- 6. Captive portal -------------------------------------------------------
+# --- 7. Captive portal -------------------------------------------------------
 echo
-echo "[6] CAPTIVE PORTAL  (interception on the connectivity check)"
+echo "[7] CAPTIVE PORTAL  (interception on the connectivity check)"
 if have_csv captive; then
   f="$M/captive.csv"
   awk -F, -v ts="$(col_index "$f" timestamp)" -v cs="$(col_index "$f" captive_suspected)" \
@@ -151,9 +168,9 @@ else
   echo "    (no data)"
 fi
 
-# --- 7. NTP offset -----------------------------------------------------------
+# --- 8. NTP offset -----------------------------------------------------------
 echo
-echo "[7] NTP  (clock offset; large drift can expire tokens/certs)"
+echo "[8] NTP  (clock offset; large drift can expire tokens/certs)"
 if have_csv ntp; then
   f="$M/ntp.csv"
   awk -F, -v ts="$(col_index "$f" timestamp)" -v of="$(col_index "$f" offset_s)" \
@@ -166,9 +183,9 @@ else
   echo "    (no data)"
 fi
 
-# --- 8. Throughput -----------------------------------------------------------
+# --- 9. Throughput -----------------------------------------------------------
 echo
-echo "[8] THROUGHPUT  (down/up Mbps per method; disabled by default)"
+echo "[9] THROUGHPUT  (down/up Mbps per method; disabled by default)"
 if have_csv throughput; then
   f="$M/throughput.csv"
   awk -F, -v ts="$(col_index "$f" timestamp)" -v me="$(col_index "$f" method)" \
