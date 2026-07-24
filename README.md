@@ -91,11 +91,11 @@ Ad-hoc single-host MTU check (drill into a suspected black hole found by the
 `mtu` test):
 
 ```bash
-./mtu-sweep.sh ao.s-f.com            # find exact path MTU + verdict
+./mtu-sweep.sh host                  # find exact path MTU + verdict
 ./mtu-sweep.sh -v --min 1300 host    # show each probe step
 ./mtu-sweep.sh -6 host               # probe over IPv6
-./mtu-sweep.sh -I eth1 host           # test via a specific source interface
-./mtu-sweep.sh -S 10.20.30.40 host    # test via a specific source IP
+./mtu-sweep.sh -I eth1 host          # test via a specific source interface
+./mtu-sweep.sh -S 10.20.30.40 host   # test via a specific source IP
 ```
 
 It reports the exact path MTU, the implied TCP MSS, and whether a reduced MTU is

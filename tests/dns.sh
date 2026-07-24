@@ -27,7 +27,13 @@ resolve_dig() {
   # $1=resolver ("system" or IP), $2=name. Echoes: status<TAB>qtime_ms<TAB>answers
   local resolver="$1" name="$2" full status qtime answers server=() bind=()
   [ "$resolver" != "system" ] && server=("@$resolver")
-  read -ra bind <<<"$(nm_bind_dig)"
+  # Skip source-IP binding for local/loopback resolvers: systemd-resolved
+  # rejects queries whose source IP is outside 127.0.0.0/8.
+  local _is_local=0
+  case "$resolver" in
+    system|127.*|::1) _is_local=1 ;;
+  esac
+  [ "$_is_local" -eq 0 ] && read -ra bind <<<"$(nm_bind_dig)"
   full="$(dig +tries=1 +time="${DNS_TIMEOUT:-2}" "${bind[@]}" "${server[@]}" "$name" A 2>&1)"
   printf '\n### %s @ %s\n%s\n' "$name" "$resolver" "$full" >>"$raw"
   status="$(printf '%s\n' "$full" | sed -n 's/.*status: \([A-Z]*\).*/\1/p' | head -n1)"
